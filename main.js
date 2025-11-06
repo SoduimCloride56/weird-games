@@ -1,34 +1,31 @@
-// === Setup Scene, Camera, and Renderer ===
+// === Scene, Camera, and Renderer ===
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
-camera.position.set(0, 1.6, 5); // eye-level height
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 1.6, 5);
+scene.add(camera);
 
 const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("gameCanvas") });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 
 // === Lighting ===
-const ambientLight = new THREE.AmbientLight(0x202020);
+const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
 scene.add(ambientLight);
 
-// Flashlight (attached to camera)
-const flashlight = new THREE.SpotLight(0xffffff, 3, 30, Math.PI / 8, 0.3, 2);
+const flashlight = new THREE.SpotLight(0xffffff, 4, 30, Math.PI / 8, 0.3, 2);
 flashlight.castShadow = true;
+flashlight.position.set(0, 1.6, 0);
+flashlight.target.position.set(0, 0, -1);
 camera.add(flashlight);
 camera.add(flashlight.target);
-scene.add(camera); // add camera to scene so its lights render
+scene.add(camera);
 
 // === Floor ===
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(50, 50),
-  new THREE.MeshStandardMaterial({ color: 0x111111 })
+  new THREE.PlaneGeometry(40, 40),
+  new THREE.MeshStandardMaterial({ color: 0x222222 })
 );
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
@@ -43,13 +40,11 @@ enemy.position.set(0, 0.5, -5);
 enemy.castShadow = true;
 scene.add(enemy);
 
-// === Pointer Lock Controls ===
+// === Controls ===
 const controls = new THREE.PointerLockControls(camera, renderer.domElement);
 scene.add(controls.getObject());
 
-document.addEventListener("click", () => {
-  controls.lock();
-});
+document.addEventListener("click", () => controls.lock());
 
 const keys = {};
 document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
@@ -66,6 +61,8 @@ document.addEventListener("keydown", e => {
 // === Movement ===
 const moveSpeed = 0.1;
 function handleMovement() {
+  if (!controls.isLocked) return;
+
   const direction = new THREE.Vector3();
 
   if (keys["w"]) direction.z -= moveSpeed;
@@ -78,21 +75,17 @@ function handleMovement() {
   controls.moveForward(-direction.z);
 }
 
-// === Simple Enemy AI ===
+// === Enemy AI ===
 function updateEnemy() {
   const playerPos = controls.getObject().position;
-  const enemyPos = enemy.position;
-
-  const dir = new THREE.Vector3().subVectors(playerPos, enemyPos);
-  const distance = dir.length();
-
-  if (distance > 1) {
+  const dir = new THREE.Vector3().subVectors(playerPos, enemy.position);
+  if (dir.length() > 1) {
     dir.normalize();
     enemy.position.add(dir.multiplyScalar(0.02));
   }
 }
 
-// === Animation Loop ===
+// === Render Loop ===
 function animate() {
   requestAnimationFrame(animate);
   handleMovement();
